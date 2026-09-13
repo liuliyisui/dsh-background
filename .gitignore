@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+
+# debug output written by tools/*.mjs (screenshots + probe logs)
+tools/shots/
