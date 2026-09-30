@@ -4,3 +4,7 @@ node_modules/
 
 # debug output written by tools/*.mjs (screenshots + probe logs)
 tools/shots/
+
+# Local backups taken before an upgrade or port (never part of the plugin)
+.bak-*/
+*.bak
