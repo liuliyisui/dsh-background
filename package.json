@@ -1,7 +1,7 @@
 {
   "name": "dsh-background",
   "description": "Custom background plugin for the DeepSeek Harness Web GUI: a wallpaper (image/animated image/video) or the built-in aurora gradient painted on one layer behind the app, with frosted-glass chrome and a persisted settings namespace driven by a floating control panel.",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "private": true,
   "type": "module",
   "main": "lib/index.js",
@@ -18,7 +18,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "test": "node test/media.test.mjs"
+    "test": "node test/media.test.mjs && node test/glass-css.test.mjs"
   },
   "dsh": {
     "bundle": {

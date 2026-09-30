@@ -1,4 +1,4 @@
-﻿# dsh-background v3
+# dsh-background v3
 
 鑷畾涔?DeepSeek Harness Web GUI 鑳屾櫙鐨勫鎴风鎻掍欢锛氬湪鐣岄潰鑳屽悗鐢讳竴灞傚绾革紙鍥剧墖 / 鍔ㄥ浘 / 瑙嗛锛夋垨鍐呯疆鏋佸厜娓愬彉锛岄厤鍚堟瘺鐜荤拑鐣岄潰涓庝竴涓诞鍔ㄦ帶鍒堕潰鏉匡紝璁剧疆鎸佷箙鍖栧湪瀹夸富绔紙`$DSH_HOME/settings.yaml` 鐨?`background:` 娈碉級銆?
 ## 鍔熻兘
@@ -158,3 +158,33 @@ node tools/legibility.mjs --url http://127.0.0.1:3080
 面板的浓度固定 **78%**、🎨 按钮 **88%**——它们装着大量小字和控件，可读性优先；它们**不跟随**「玻璃不透明度」滑块（那个管输入框和侧栏）。
 
 断言：面板必须有 `blur()`，且解析出的 alpha ≥ 0.6。注意 `color-mix` 序列化成 `color(srgb r g b / a)` 而不是 `rgba()`。
+
+### 21. 官方「设置」弹窗也要磨砂
+
+v3 在这里只写了 `backdrop-filter`、**没有把底色变半透明**——在原先不透明的面板上等于什么都没做。这就是「设置为什么没有毛玻璃」的答案。
+
+从打包应用的归档里读出的真实 CSS：
+
+| 选择器 | 背景 |
+|---|---|
+| `.wCInkW_panel`（`role="dialog"`） | `var(--dsw-alias-bg-layer-2)` ← **唯一画底色的节点** |
+| `.wCInkW_nav` / `.wCInkW_content` | 无（纯布局） |
+| `.wCInkW_mask` | `var(--dsw-alias-bg-mask-1)` |
+
+所以只要给 `[role="dialog"]` 一个半透明底色就能整块磨砂，**不需要**碰它的后代（v2 那种 `[role="dialog"] * { background: transparent }` 会把按钮和列表自己的底色剥掉）。现在的做法：
+
+```css
+[data-dsh-glass] [role="dialog"] {
+  backdrop-filter: blur(14px) saturate(150%);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 80%, transparent) !important;
+}
+```
+
+底色从**面板自己用的那个 token** 派生，深浅主题和将来换主题都会自动跟随；浓度固定 80%，因为这个面上全是小字和控件。
+
+### 打包版（app.asar）怎么读源码
+
+新版桌面端把整个内核装进 `app.asar`，Windows 无法当目录遍历，而且它的 GUI 地址每次启动随机、token 不落盘（直接请求是 `401`，日志里也查不到），所以 CDP 探针用不了。改走两条路：
+
+- `tools/asar-read.mjs`：零依赖自行解析 asar 归档（pickle 头 + JSON 目录 + 拼接的文件体），可以 `--list` 列目录或抽取单个文件。两个坑：JSON 目录从偏移 **16** 开始（长度字段在 12），而且 asar 把 `size`/`offset` 存成**字符串**，拼接会得到一个天文数字的读取位置。
+- `test/glass-css.test.mjs`：把 `lib/client.js` 里的 `glassCss()` 抽出来求值，断言**每个磨砂面既有 `blur()` 又有半透明底色**。这类「加了模糊却看不见」的 bug 在本插件里出现过三次（消息输入框、侧栏、官方设置弹窗），静态测试是唯一不依赖实时 GUI 的守门人——顺带它也会在 CSS 注释里误写反引号截断模板字符串时直接报错。
